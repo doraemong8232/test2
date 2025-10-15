@@ -1,16 +1,746 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable:yes">
-    </style>
-    <title>2-7</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>헬로월드 사이트</title>
+  <link rel="shortcut icon" href="gamilgo1.png" type="image/png" />
+  <style>
+    :root{
+      --ink:#111827; --bg:#ffffff; --brand:#1d4ed8; --muted:#6b7280; --bar:#0ea5e9; --header-h:56px;
+      --pill-active:rgba(255,255,255,.16);
+    }
+    *{box-sizing:border-box; margin:0; padding:0}
+    html,body{height:100%}
+    body{font-family:system-ui,apple-system,Segoe UI,Roboto,Pretendard,Malgun Gothic,Arial,sans-serif; color:var(--ink); background:var(--bg)}
+
+    /* ===== 헤더 ===== */
+    header{position:sticky; top:0; z-index:1002; background:var(--bar); box-shadow:0 2px 10px rgba(0,0,0,.06)}
+    .nav-wrap{max-width:1080px; margin:0 auto; padding:0 16px; display:flex; align-items:center; gap:12px; min-height:var(--header-h)}
+    .brand{display:flex; align-items:center; gap:10px; text-decoration:none; color:#fff; padding:10px 0}
+    .brand img{height:32px}
+    .brand span{font-weight:700; letter-spacing:.3px}
+
+    .hamburger{margin-left:auto; display:none; border:0; background:transparent; cursor:pointer; width:44px; height:44px; border-radius:10px}
+    .hamburger:focus-visible{outline:2px solid #fff; outline-offset:2px}
+    .hamburger .bar{display:block; width:24px; height:2px; background:#fff; margin:5px auto}
+
+    .right-slot{display:flex; align-items:center; gap:8px}
+    .login-link{display:flex; align-items:center; justify-content:center; width:40px; height:40px; border-radius:10px; text-decoration:none}
+    .login-link:focus-visible{outline:2px solid #fff; outline-offset:2px}
+    .login-link img{height:24px}
+
+    nav{margin-left:auto}
+    .menu,.submenu{list-style:none}
+    .menu{display:flex; align-items:center; gap:8px}
+    .menu>li{position:relative}
+    .menu>li>a{display:inline-flex; align-items:center; gap:6px; color:#fff; text-decoration:none; font-weight:600; padding:10px 12px; border-radius:10px}
+    .menu>li>a:hover{background:var(--pill-active)}
+    .menu>li>a.active{background:var(--pill-active); color:#fff}
+
+    .submenu{position:absolute; left:0; top:100%; min-width:220px; background:#fff; border-radius:14px; box-shadow:0 10px 30px rgba(2,6,23,.15); overflow:hidden; opacity:0; visibility:hidden; transform:translateY(6px); transition:.18s ease}
+    .submenu li a{display:block; color:var(--ink); text-decoration:none; padding:12px 14px; font-weight:500}
+    .submenu li a:hover{background:#f3f4f6}
+    .menu>li:focus-within>.submenu, .menu>li:hover>.submenu{opacity:1; visibility:visible; transform:translateY(0)}
+
+    /* ===== 본문 ===== */
+    main{max-width:1080px; margin:24px auto; padding:0 16px}
+    .muted{color:var(--muted)}
+    .card{border:1px solid #e5e7eb; border-radius:14px; padding:16px; box-shadow:0 4px 14px rgba(2,6,23,.06); background:#fff}
+
+    /* ===== 모바일: 오른쪽 드로어 ===== */
+    @media (max-width:900px){
+      .hamburger{display:block}
+      #primary-nav{
+        position:fixed; top:var(--header-h); right:-100%;
+        width:80vw; max-width:360px; height:calc(100vh - var(--header-h));
+        background:#fff; box-shadow:-10px 0 30px rgba(2,6,23,.18);
+        transition:right .25s ease; display:block; overflow-y:auto; z-index:1001; padding:16px 12px 24px;
+      }
+      #primary-nav.open{right:0}
+      .menu{display:flex; flex-direction:column; gap:4px}
+      .menu>li>a{color:#111827; background:transparent; display:flex; align-items:center; justify-content:space-between; padding:12px 10px; border-radius:10px; font-weight:700; text-decoration:none}
+      .menu>li>a:hover{background:#f3f4f6}
+      .menu>li>a.active{background:#e5e7eb; color:#111827}
+      .submenu{position:static; opacity:1; visibility:visible; transform:none; background:#f8fafc; border-radius:10px; box-shadow:none; overflow:hidden; display:none; margin:4px 0 10px; padding:6px}
+      .submenu.open{display:block}
+      .submenu li a{padding:10px 10px; color:#111827; border-radius:8px; text-decoration:none; display:block}
+      .submenu li a:hover{background:#eef2ff}
+    }
+
+    /* 유틸 */
+    .row{display:flex; gap:12px; flex-wrap:wrap}
+    .btn{border:1px solid #e5e7eb; background:#fff; padding:8px 12px; border-radius:10px; cursor:pointer}
+    .btn.primary{background:#1d4ed8; color:#fff; border-color:#1d4ed8}
+    .btn.ghost{background:transparent}
+    .chips{display:flex; flex-wrap:wrap; gap:8px}
+    .chip{padding:6px 10px; border-radius:999px; border:1px solid #e5e7eb; cursor:pointer; user-select:none}
+    .chip.active{background:#111827; color:#fff; border-color:#111827}
+    table{width:100%; border-collapse:collapse}
+    th,td{border-bottom:1px solid #e5e7eb; padding:10px; text-align:left; font-size:14px}
+    input[type="text"]{padding:10px 12px; border:1px solid #e5e7eb; border-radius:10px; width:100%}
+    .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace}
+
+    /* 가로 스크롤 필터 바 */
+    .hscroll{display:flex; gap:8px; overflow-x:auto; padding:8px 2px 10px}
+    .hscroll::-webkit-scrollbar{height:8px}
+    .hscroll::-webkit-scrollbar-thumb{background:#e5e7eb; border-radius:999px}
+    .filter-card{border:1px solid #e5e7eb; background:#fff; border-radius:12px; padding:10px}
+    .select{padding:10px 12px; border:1px solid #e5e7eb; border-radius:10px; background:#fff}
+    .label{font-size:12px; color:var(--muted); margin-bottom:6px}
+
+    .login-link img{
+    height:40px;   /* 원하는 크기 */
+    width:auto;    /* 비율 유지 */
+    
+    }
+
+
+  </style>
 </head>
 <body>
-    <header>
-        <a href="https://gamil-helloworld.netlify.app/">
-            <img src="gamilgo_logo.png" alt="gamilgo_logo">
+  <!-- ===== 헤더 ===== -->
+  <header>
+    <div class="nav-wrap">
+      <a class="brand" href="#/">
+        <img src="gamilgo_logo.png" alt="사이트 로고"/>
+      </a>
+
+      <button class="hamburger" aria-label="메뉴 열기" aria-expanded="false" aria-controls="primary-nav">
+        <span class="bar"></span><span class="bar"></span><span class="bar"></span>
+      </button>
+
+      <div class="right-slot">
+        <a class="login-link" href="#/login" aria-label="로그인">
+          <img src="login.png" alt="로그인"/>
         </a>
-    </header>
+      </div>
+
+      <nav id="primary-nav" aria-label="주 메뉴">
+        <ul class="menu" role="menubar">
+          <li role="none"><a role="menuitem" href="#/sogae" data-route="/sogae">소개</a></li>
+
+          <li role="none">
+            <a role="menuitem" aria-haspopup="true" aria-expanded="false" href="#!" data-top>알림·소통</a>
+            <ul class="submenu" role="menu" aria-label="알림·소통 하위 메뉴">
+              <li role="none"><a role="menuitem" href="#/gongji" data-route="/gongji">공지</a></li>
+              <li role="none"><a role="menuitem" href="#/suggest" data-route="/suggest">건의함</a></li>
+              <li role="none"><a role="menuitem" href="#/event" data-route="/event">SNS 소개</a></li>
+            </ul>
+          </li>
+
+          <li role="none">
+            <a role="menuitem" aria-haspopup="true" aria-expanded="false" href="#!" data-top>편의 정보</a>
+            <ul class="submenu" role="menu" aria-label="편의 정보 하위 메뉴">
+              <li role="none"><a role="menuitem" href="#/search-teacher" data-route="/search-teacher">선생님 교무실 검색</a></li>
+              <li role="none"><a role="menuitem" href="#/search-specialclassroom" data-route="/search-specialclassroom">특별실 위치 검색</a></li>
+              <li role="none"><a role="menuitem" href="#/bunsilmul" data-route="/bunsilmul">분실물 현황</a></li>
+            </ul>
+          </li>
+
+          <li role="none">
+            <a role="menuitem" aria-haspopup="true" aria-expanded="false" href="#!" data-top>지원</a>
+            <ul class="submenu" role="menu" aria-label="지원 하위 메뉴">
+              <li role="none"><a role="menuitem" href="#/sharing-calender" data-route="/sharing-calender">학급별 일정 공유</a></li>
+              <li role="none"><a role="menuitem" href="#/recording-study" data-route="/recording-study">공부 기록</a></li>
+            </ul>
+          </li>
+        </ul>
+      </nav>
+
+    </div>
+  </header>
+
+  <!-- ===== 본문 컨테이너(라우터가 이 안에 mount) ===== -->
+  <main id="app" aria-live="polite" aria-busy="false"></main>
+
+  <script>
+    /* ===== 드로어/아코디언 유지 ===== */
+    const hamburger = document.querySelector('.hamburger');
+    const nav = document.getElementById('primary-nav');
+    const topLinks = document.querySelectorAll('.menu > li > a[data-top]');
+    const submenus = document.querySelectorAll('.submenu');
+    const isMobile = () => window.matchMedia('(max-width: 900px)').matches;
+
+    function openDrawer(){ nav.classList.add('open'); hamburger.setAttribute('aria-expanded','true'); document.body.style.overflow='hidden'; }
+    function closeDrawer(){ nav.classList.remove('open'); hamburger.setAttribute('aria-expanded','false'); document.body.style.overflow=''; submenus.forEach(s=>s.classList.remove('open')); topLinks.forEach(a=>a.setAttribute('aria-expanded','false')); }
+
+    hamburger.addEventListener('click', () => { if(!isMobile()) return; nav.classList.contains('open') ? closeDrawer() : openDrawer(); });
+    document.addEventListener('keydown', e => { if(e.key==='Escape' && nav.classList.contains('open')) closeDrawer(); });
+    topLinks.forEach(link => {
+      link.addEventListener('click', e => {
+        if (!isMobile()) return;
+        e.preventDefault();
+        const panel = link.nextElementSibling;
+        if (!panel) return;
+        const willOpen = !panel.classList.contains('open');
+        submenus.forEach(s => s.classList.remove('open'));
+        topLinks.forEach(a => a.setAttribute('aria-expanded','false'));
+        if (willOpen){ panel.classList.add('open'); link.setAttribute('aria-expanded','true'); }
+      });
+    });
+    window.addEventListener('resize', () => { if (!isMobile()) closeDrawer(); });
+    // ===== 메뉴 바깥 클릭 시 드로어 닫기 =====
+    document.addEventListener('click', e => {
+    if (!isMobile()) return;                    // 모바일일 때만 작동
+    if (!nav.classList.contains('open')) return; // 드로어가 열려 있을 때만
+
+    const clickedInsideNav = nav.contains(e.target);          // 메뉴 내부 클릭
+    const clickedHamburger = hamburger.contains(e.target);    // 햄버거 버튼 클릭
+    if (!clickedInsideNav && !clickedHamburger) {
+        closeDrawer();  // 메뉴 외부 클릭 시 닫기
+    }
+    });
+
+
+    /* ===== 라우터: 컴포넌트 기반 (mount/unmount) ===== */
+    const app = document.getElementById('app');
+    let currentRoute = null; // { mount, unmount }
+
+    // 유틸: 활성 링크 표시
+    function setActiveLink(path){
+      document.querySelectorAll('[data-route]').forEach(a => a.classList.remove('active'));
+      document.querySelectorAll(`[data-route="${path}"]`).forEach(a => a.classList.add('active'));
+    }
+
+    // ---------- 컴포넌트들 ----------
+    const Home = {
+      mount(root){
+        root.innerHTML = `
+          <section class="page">
+            <h1>환영합니다 👋</h1>
+            <p class="muted">학생회의 공지와 지원 서비스를 한 곳에서!</p>
+          </section>
+        `;
+      },
+      unmount(){ /* 없음 */ }
+    };
+
+    // 공지: 필터 + 동적 목록
+    const Notice = (function(){
+      const data = [
+        { id:1, type:'일반', title:'학생회 회의 일정 안내', date:'2025-10-10' },
+        { id:2, type:'이벤트', title:'축제 포스터 공모전', date:'2025-10-18' },
+        { id:3, type:'회의', title:'9월 회의록 공개', date:'2025-09-30' },
+        { id:4, type:'이벤트', title:'동아리 박람회 부스 신청', date:'2025-10-20' },
+      ];
+      let current = '전체';
+      let elFilter = null, elList = null;
+
+      function renderList(){
+        const list = (current==='전체') ? data : data.filter(d=>d.type===current);
+        elList.innerHTML = list.map(d => `
+          <div class="card" data-id="${d.id}">
+            <div class="row" style="justify-content:space-between; align-items:center">
+              <strong>${d.title}</strong>
+              <span class="muted mono">${d.date}</span>
+            </div>
+            <div class="muted" style="margin-top:6px">분류: ${d.type}</div>
+            <div style="margin-top:10px">
+              <button class="btn" data-action="open" data-id="${d.id}">상세 보기</button>
+            </div>
+          </div>
+        `).join('');
+      }
+
+      function onFilterClick(e){
+        const btn = e.target.closest('.chip');
+        if (!btn) return;
+        current = btn.dataset.cat;
+        [...elFilter.querySelectorAll('.chip')].forEach(c=>c.classList.toggle('active', c.dataset.cat===current));
+        renderList();
+      }
+
+      function onListClick(e){
+        const btn = e.target.closest('[data-action="open"]');
+        if (!btn) return;
+        const id = +btn.dataset.id;
+        const item = data.find(d=>d.id===id);
+        if (!item) return;
+        alert(`📌 [${item.type}] ${item.title}\n날짜: ${item.date}`);
+      }
+
+      return {
+        mount(root){
+          root.innerHTML = `
+            <section class="page">
+              <h1>공지</h1>
+              <p class="muted" style="margin-bottom:10px">이벤트/행사/일반 공지를 확인하세요.</p>
+              <div class="chips" id="notice-filter" style="margin-bottom:12px">
+                <div class="chip active" data-cat="전체">전체</div>
+                <div class="chip" data-cat="일반">일반</div>
+                <div class="chip" data-cat="회의">회의</div>
+                <div class="chip" data-cat="이벤트">이벤트</div>
+              </div>
+              <div class="row" id="notice-list" style="flex-direction:column; gap:12px"></div>
+            </section>
+          `;
+          elFilter = root.querySelector('#notice-filter');
+          elList = root.querySelector('#notice-list');
+          elFilter.addEventListener('click', onFilterClick);
+          elList.addEventListener('click', onListClick);
+          renderList();
+        },
+        unmount(){
+          if (!elFilter || !elList) return;
+          elFilter.removeEventListener('click', onFilterClick);
+          elList.removeEventListener('click', onListClick);
+          elFilter = elList = null;
+        }
+      };
+    })();
+
+// 교무실 검색: [위] 가로 필터 → [아래] 이름 검색 → 결과 표/부서이미지 전환
+const SearchTeacher = (function(){
+  const IMG_BASE = ''; // 예: 'img/dept/' 로 바꾸면 'img/dept/교무기획부.png' 형태로 로드됨
+
+  const SUBJECT_MAIN = ['국어','영어','수학','사회','과학','예체능','정보·기타','제2외국어'];
+  const SUB_BY_GRADE = {
+    1: ['국어','영어','수학','통합과학','통합사회','한국사','미술','음악','체육','정보'],
+    2: [
+      '문학','독서','수학I','수학II','기하','영어I','영어II','영어권 문화','운동과 건강',
+      '물리I','화학I','생명과학I','지구과학I','정치와 법','생활과 윤리','경제','세계사','한국지리',
+      '미술 감상과 비평','음악 감상과 비평','인공지능 기초','일본어I','중국어I'
+    ],
+    3: [
+      '스포츠 생활',
+      '화법과 작문','언어와 매체','미적분','확률과 통계','영어 독해와 작문','영어 회화',
+      '심화국어','심화영어','수학과제와 탐구',
+      '물리II','화학II','생명과학II','지구과학II','생활과 과학','윤리와 사상','사회 문화',
+      '동아시아사','세계지리','여행지리','사회문제와 탐구',
+      '프로그래밍','일본문화','중국문화','보건','심리학','논술','세계시민'
+    ]
+  };
+  const DETAIL_TO_MAIN = new Map([
+    ['문학','국어'],['독서','국어'],['화법과 작문','국어'],['언어와 매체','국어'],['심화국어','국어'],['논술','국어'],
+    ['영어I','영어'],['영어II','영어'],['영어권 문화','영어'],['영어 독해와 작문','영어'],['영어 회화','영어'],['심화영어','영어'],
+    ['수학I','수학'],['수학II','수학'],['기하','수학'],['미적분','수학'],['확률과 통계','수학'],['수학과제와 탐구','수학'],
+    ['통합과학','과학'],['물리I','과학'],['화학I','과학'],['생명과학I','과학'],['지구과학I','과학'],
+    ['물리II','과학'],['화학II','과학'],['생명과학II','과학'],['지구과학II','과학'],['생활과 과학','과학'],
+    ['통합사회','사회'],['한국사','사회'],['정치와 법','사회'],['생활과 윤리','사회'],['경제','사회'],
+    ['세계사','사회'],['한국지리','사회'],['사회 문화','사회'],['동아시아사','사회'],['세계지리','사회'],
+    ['여행지리','사회'],['사회문제와 탐구','사회'],['세계시민','사회'],
+    ['미술','예체능'],['음악','예체능'],['체육','예체능'],['운동과 건강','예체능'],['스포츠 생활','예체능'],
+    ['미술 감상과 비평','예체능'],['음악 감상과 비평','예체능'],['보건','예체능'],
+    ['정보','정보·기타'],['프로그래밍','정보·기타'],['인공지능 기초','정보·기타'],
+    ['일본어I','제2외국어'],['중국어I','제2외국어'],['일본문화','제2외국어'],['중국문화','제2외국어'],
+  ]);
+
+  // === 실제 데이터에서는 dept를 아래 12개 중 하나로 채워줘 ===
+  // 교무기획부, 교육연구부, 교육과정부, 인문사회부, 수리과학부, 교육정보부, 생활인권부,
+  // 체육예술안전부, 진로진학부, 1학년부, 2학년부, 3학년부
+  const teachers = [
+    { name:'김지훈', main:'수학', detail:'수학I', grades:[2], room:'본관 2층 205', dept:'수리과학부' },
+    { name:'이승진', main:'수학', detail:'기하', grades:[2], room:'본관 3층 305', dept:'수리과학부' },
+    { name:'박소연', main:'영어', detail:'영어I', grades:[2], room:'신관 3층 312', dept:'인문사회부' },
+    { name:'강소원', main:'영어', detail:'영어 독해와 작문', grades:[3], room:'신관 2층 210', dept:'교무기획부' },
+    { name:'김진미', main:'국어', detail:'문학', grades:[2], room:'본관 4층 402', dept:'교육연구부' },
+    { name:'최미희', main:'국어', detail:'언어와 매체', grades:[3], room:'본관 4층 404', dept:'인문사회부' },
+    { name:'조문영', main:'과학', detail:'지구과학I', grades:[2], room:'본관 4층 402', dept:'수리과학부' },
+    { name:'김수경', main:'과학', detail:'생명과학II', grades:[3], room:'과학실 1', dept:'수리과학부' },
+    { name:'이정원', main:'사회', detail:'세계사', grades:[2], room:'본관 2층 207', dept:'인문사회부' },
+    { name:'곽보근', main:'정보·기타', detail:'프로그래밍', grades:[3], room:'컴실 1', dept:'교육정보부' },
+    { name:'김연화', main:'제2외국어', detail:'중국어I', grades:[2], room:'신관 2층 206', dept:'인문사회부' },
+  ].map(t=>{
+    if (!t.main && DETAIL_TO_MAIN.has(t.detail)) t.main = DETAIL_TO_MAIN.get(t.detail);
+    if (t.detail && DETAIL_TO_MAIN.has(t.detail) && t.main!==DETAIL_TO_MAIN.get(t.detail)) {
+      t.main = DETAIL_TO_MAIN.get(t.detail);
+    }
+    return t;
+  });
+
+  let elInput=null, elTbody=null;
+  let selMain=null, selGrade=null, selDetail=null, selTeacher=null;
+
+  // 결과 영역 2종(표/이미지)을 교체하기 위한 컨테이너
+  let elResultArea=null;
+
+  let state = { q:'', main:'', grade:'', detail:'', teacher:'', detailMode:false, selectedDept:'' };
+
+  function renderTable(){
+    const table = document.createElement('table');
+    const thead = document.createElement('thead');
+    const trh = document.createElement('tr');
+    ['이름','과목','위치','위치 자세히 보기'].forEach(t=>{
+      const th=document.createElement('th'); th.textContent=t; trh.appendChild(th);
+    });
+    thead.appendChild(trh);
+    elTbody = document.createElement('tbody');
+    table.append(thead, elTbody);
+
+    // 표 내용 채우기
+    renderRows();
+
+    // 클릭 핸들러
+    elTbody.addEventListener('click', onTableClick);
+
+    return table;
+  }
+
+  function renderImageView(dept, teacherName){
+    const wrap = document.createElement('div');
+    wrap.style.display='grid';
+    wrap.style.gap='12px';
+
+    const back = document.createElement('button');
+    back.className='btn';
+    back.textContent='← 목록으로';
+    back.addEventListener('click', ()=>{
+      state.detailMode = false;
+      state.selectedDept = '';
+      swapToTable();
+    });
+
+    const card = document.createElement('div');
+    card.className='card';
+    card.style.textAlign='center';
+
+    const caption = document.createElement('div');
+    caption.style.margin='4px 0 10px';
+    caption.innerHTML = `<strong>${teacherName}</strong> · <span class="muted">${dept}</span>`;
+
+    const img = document.createElement('img');
+    img.alt = `${dept} 위치 이미지`;
+    img.style.maxWidth='100%';
+    img.style.height='auto';
+    img.style.borderRadius='12px';
+    img.style.border='1px solid #e5e7eb';
+
+    // 파일명에 공백/한글이 있으므로 인코딩
+    const src = IMG_BASE + encodeURIComponent(dept) + '.png';
+    img.src = src;
+
+    card.append(caption, img);
+    wrap.append(back, card);
+    return wrap;
+  }
+
+  function swapToImage(dept, teacherName){
+    elResultArea.textContent = '';
+    elResultArea.appendChild(renderImageView(dept, teacherName));
+  }
+  function swapToTable(){
+    elResultArea.textContent = '';
+    elResultArea.appendChild(renderTable());
+  }
+
+  function renderRows(){
+    let list = [...teachers];
+    if (state.q.trim()){
+      const kw = state.q.trim();
+      list = list.filter(t => t.name.includes(kw));
+    }
+    if (state.main)   list = list.filter(t => t.main === state.main);
+    if (state.grade)  list = list.filter(t => t.grades.includes(+state.grade));
+    if (state.detail) list = list.filter(t => t.detail === state.detail);
+    if (state.teacher)list = list.filter(t => t.name === state.teacher);
+
+    elTbody.textContent = '';
+    for (const t of list){
+      const tr = document.createElement('tr');
+
+      const td1 = document.createElement('td'); td1.textContent = t.name;
+      const td2 = document.createElement('td'); td2.textContent = `${t.main}${t.detail ? ' · '+t.detail : ''}`;
+      const td3 = document.createElement('td'); td3.textContent = t.room;
+
+      const td4 = document.createElement('td');
+      const btn = document.createElement('button');
+      btn.className = 'btn';
+      btn.textContent = '위치 자세히 보기';
+      btn.dataset.action = 'detail';
+      btn.dataset.name = t.name;
+      btn.dataset.dept = t.dept || '';
+      td4.appendChild(btn);
+
+      tr.append(td1, td2, td3, td4);
+      elTbody.appendChild(tr);
+    }
+  }
+
+  function refreshDependentOptions(){
+    const g = state.grade ? +state.grade : null;
+    let detailPool = new Set();
+    if (g){ SUB_BY_GRADE[g].forEach(s=>detailPool.add(s)); }
+    else { Object.values(SUB_BY_GRADE).flat().forEach(s=>detailPool.add(s)); }
+
+    if (state.main){
+      detailPool = new Set([...detailPool].filter(d => (DETAIL_TO_MAIN.get(d) || guessMain(d)) === state.main));
+    }
+    fillSelect(selDetail, ['(세부 과목 전체)', ...[...detailPool].sort()], state.detail);
+
+    let pool = teachers.filter(t=>{
+      if (state.main && t.main!==state.main) return false;
+      if (state.grade && !t.grades.includes(+state.grade)) return false;
+      if (state.detail && t.detail!==state.detail) return false;
+      return true;
+    }).map(t=>t.name);
+    pool = Array.from(new Set(pool)).sort();
+    fillSelect(selTeacher, ['(선생님 전체)', ...pool], state.teacher);
+  }
+
+  function onInput(e){ state.q = e.target.value; if(!state.detailMode) renderRows(); }
+  function onMain(e){ state.main = e.target.value || ''; state.detail=''; state.teacher=''; refreshDependentOptions(); if(!state.detailMode) renderRows(); }
+  function onGrade(e){ state.grade = e.target.value || ''; state.detail=''; state.teacher=''; refreshDependentOptions(); if(!state.detailMode) renderRows(); }
+  function onDetail(e){ state.detail = e.target.value || ''; state.teacher=''; refreshDependentOptions(); if(!state.detailMode) renderRows(); }
+  function onTeacher(e){ state.teacher = e.target.value || ''; if(!state.detailMode) renderRows(); }
+
+  function onTableClick(e){
+    const btn = e.target.closest('button[data-action="detail"]');
+    if (!btn) return;
+    const dept = btn.dataset.dept;
+    const name = btn.dataset.name;
+    if (!dept){
+      alert('부서 정보가 없는 선생님입니다.');
+      return;
+    }
+    state.detailMode = true;
+    state.selectedDept = dept;
+    swapToImage(dept, name);
+  }
+
+  function fillSelect(sel, options, current){
+    sel.textContent = '';
+    for (const label of options){
+      const opt = document.createElement('option');
+      if (label.startsWith('(') && label.endsWith(')')){ opt.value=''; opt.textContent=label; }
+      else { opt.value = label; opt.textContent = label; }
+      if (current && current===opt.value) opt.selected = true;
+      sel.appendChild(opt);
+    }
+  }
+  function guessMain(detail){
+    if (/^영어/.test(detail) || detail==='영어권 문화') return '영어';
+    if (/^수학|미적분|확률과 통계|기하|수학과제와 탐구/.test(detail)) return '수학';
+    if (/물리|화학|생명과학|지구과학|생활과 과학|통합과학/.test(detail)) return '과학';
+    if (/세계사|한국사|지리|윤리|정치|경제|사회/.test(detail)) return '사회';
+    if (/미술|음악|체육|스포츠|운동|보건/.test(detail)) return '예체능';
+    if (/일본|중국/.test(detail)) return '제2외국어';
+    if (/프로그래밍|인공지능|정보/.test(detail)) return '정보·기타';
+    if (/국어|문학|독서|화법|언어|심화국어|논술/.test(detail)) return '국어';
+    return '정보·기타';
+  }
+
+  return {
+    mount(root){
+      const section = document.createElement('section');
+      section.className = 'page';
+
+      const h1 = document.createElement('h1');
+      h1.textContent = '선생님 교무실 검색';
+
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.style.marginTop = '8px';
+
+      // [위] 가로 스크롤 필터
+      const filterWrap = document.createElement('div'); filterWrap.className='hscroll';
+
+      const mkBox = (labelText)=>{
+        const box = document.createElement('div'); box.className='filter-card';
+        const lb = document.createElement('div'); lb.className='label'; lb.textContent=labelText;
+        const sel = document.createElement('select'); sel.className='select';
+        box.append(lb, sel);
+        return { box, sel };
+      };
+
+      const {box:boxMain, sel:selMainEl} = mkBox('과목 선택(대분류)');
+      selMain = selMainEl; fillSelect(selMain, ['(과목 전체)', ...SUBJECT_MAIN], state.main);
+
+      const {box:boxGrade, sel:selGradeEl} = mkBox('학년 선택');
+      selGrade = selGradeEl; fillSelect(selGrade, ['(전체)','1','2','3'], state.grade);
+
+      const {box:boxDetail, sel:selDetailEl} = mkBox('세부 과목 선택');
+      selDetail = selDetailEl;
+
+      const {box:boxTeacher, sel:selTeacherEl} = mkBox('선생님 선택');
+      selTeacher = selTeacherEl;
+
+      filterWrap.append(boxMain, boxGrade, boxDetail, boxTeacher);
+
+      // [아래] 이름 검색
+      const nameWrap = document.createElement('div');
+      nameWrap.style.display='grid';
+      nameWrap.style.gap='0px';
+      nameWrap.style.marginTop='0px';
+      const lb = document.createElement('div'); lb.className='label';
+      elInput = document.createElement('input');
+      elInput.type='text'; elInput.placeholder='예: 김지훈';
+      nameWrap.append(lb, elInput);
+
+      // 결과 영역(표/이미지 스왑)
+      elResultArea = document.createElement('div');
+      elResultArea.style.marginTop='12px';
+      // 초기에는 표
+      elResultArea.appendChild(renderTable());
+
+      // 조립
+      card.append(filterWrap, nameWrap, elResultArea);
+      section.append(h1, card);
+      root.appendChild(section);
+
+      // 이벤트
+      elInput.addEventListener('input', onInput);
+      selMain.addEventListener('change', onMain);
+      selGrade.addEventListener('change', onGrade);
+      selDetail.addEventListener('change', onDetail);
+      selTeacher.addEventListener('change', onTeacher);
+
+      refreshDependentOptions();
+    },
+    unmount(){
+      // 이벤트 해제(표가 이미지로 바뀌었을 수 있으므로 안전 체크)
+      if (elTbody) elTbody.removeEventListener('click', onTableClick);
+      if (elInput) elInput.removeEventListener('input', onInput);
+      if (selMain) selMain.removeEventListener('change', onMain);
+      if (selGrade) selGrade.removeEventListener('change', onGrade);
+      if (selDetail) selDetail.removeEventListener('change', onDetail);
+      if (selTeacher) selTeacher.removeEventListener('change', onTeacher);
+
+      elInput=elTbody=selMain=selGrade=selDetail=selTeacher=elResultArea=null;
+      state = { q:'', main:'', grade:'', detail:'', teacher:'', detailMode:false, selectedDept:'' };
+    }
+  };
+})();
+
+
+
+
+    // 공부 기록: 타이머 (unmount 때 인터벌 해제)
+    const StudyTimer = (function(){
+      let interval = null, seconds = 0;
+      let elTime=null, elStart=null, elStop=null, elReset=null;
+
+      function fmt(s){
+        const h = String(Math.floor(s/3600)).padStart(2,'0');
+        const m = String(Math.floor((s%3600)/60)).padStart(2,'0');
+        const ss= String(s%60).padStart(2,'0');
+        return `${h}:${m}:${ss}`;
+      }
+      function tick(){
+        seconds++; if (elTime) elTime.textContent = fmt(seconds);
+      }
+      function onStart(){
+        if (interval) return;
+        interval = setInterval(tick, 1000);
+        elStart.disabled = true; elStop.disabled = false;
+      }
+      function onStop(){
+        if (!interval) return;
+        clearInterval(interval); interval=null;
+        elStart.disabled = false; elStop.disabled = true;
+      }
+      function onReset(){
+        seconds = 0; if (elTime) elTime.textContent = fmt(seconds);
+      }
+
+      return {
+        mount(root){
+          root.innerHTML = `
+            <section class="page">
+              <h1>공부 기록</h1>
+              <div class="card" style="margin-top:8px; display:flex; flex-direction:column; gap:12px; align-items:flex-start">
+                <div class="mono" id="time" style="font-size:28px">00:00:00</div>
+                <div class="row">
+                  <button class="btn primary" id="start">시작</button>
+                  <button class="btn" id="stop" disabled>일시정지</button>
+                  <button class="btn ghost" id="reset">리셋</button>
+                </div>
+                <p class="muted" style="margin-top:4px">※ 페이지 이동 시 타이머는 자동으로 일시정지됩니다.</p>
+              </div>
+            </section>
+          `;
+          elTime = root.querySelector('#time');
+          elStart = root.querySelector('#start');
+          elStop  = root.querySelector('#stop');
+          elReset = root.querySelector('#reset');
+          elStart.addEventListener('click', onStart);
+          elStop.addEventListener('click', onStop);
+          elReset.addEventListener('click', onReset);
+        },
+        unmount(){
+          // 인터벌/리스너 정리
+          if (interval){ clearInterval(interval); interval=null; }
+          if (elStart) elStart.removeEventListener('click', onStart);
+          if (elStop)  elStop.removeEventListener('click', onStop);
+          if (elReset) elReset.removeEventListener('click', onReset);
+          elTime=elStart=elStop=elReset=null;
+        }
+      };
+    })();
+
+    const SimplePage = (title, text) => ({
+      mount(root){
+        root.innerHTML = `
+          <section class="page">
+            <h1>${title}</h1>
+            <p class="muted">${text}</p>
+          </section>
+        `;
+      },
+      unmount(){}
+    });
+
+    // ---------- 라우트 테이블 ----------
+    const routes = {
+      '/': Home,
+      '/sogae': SimplePage('사이트 소개','이 웹사이트는 학생회의 공지, 편의 정보, 지원 기능을 제공합니다.'),
+      '/gongji': Notice,
+      '/suggest': SimplePage('건의함','학생 의견을 수집합니다. (로그인 후 제출)'),
+      '/event': SimplePage('SNS 소개','인스타그램/커뮤니티 등의 공식 채널을 소개합니다.'),
+      '/search-teacher': SearchTeacher,
+      '/search-specialclassroom': SimplePage('특별실 위치 검색','과학실, 음악실 등 위치 안내를 제공할 예정입니다.'),
+      '/bunsilmul': SimplePage('분실물 현황','사진/보관장소/수령 방법을 안내합니다.'),
+      '/sharing-calender': SimplePage('학급별 일정 공유','캘린더 임베드 또는 자체 일정 보드를 제공할 예정입니다.'),
+      '/recording-study': StudyTimer,
+      '/login': SimplePage('로그인','여기에 로그인 폼 또는 SSO 버튼을 배치합니다.'),
+    };
+
+    // ---------- 라우터 ----------
+    function getPath(){
+      const raw = location.hash.replace(/^#/, '');
+      return raw || '/';
+    }
+
+    function render(){
+      const path = getPath();
+      const next = routes[path];
+
+      // 이전 라우트 정리
+      if (currentRoute && typeof currentRoute.unmount === 'function'){
+        currentRoute.unmount();
+      }
+
+      // 새 라우트 렌더
+      app.setAttribute('aria-busy','true');
+      app.innerHTML = ''; // 컨테이너 비우고
+      const mountTarget = document.createElement('div');
+      app.appendChild(mountTarget);
+      if (next && typeof next.mount === 'function'){
+        next.mount(mountTarget);
+        currentRoute = next;
+      } else {
+        // 404
+        mountTarget.innerHTML = `
+          <section class="page">
+            <h1>페이지를 찾을 수 없어요 😢</h1>
+            <p class="muted"><a href="#/">홈으로 돌아가기</a></p>
+          </section>
+        `;
+        currentRoute = null;
+        document.title = `404 · 헬로월드 학생회`;
+      }
+      app.setAttribute('aria-busy','false');
+
+      // 활성 링크 표시
+      setActiveLink(path);
+
+      // 모바일이면 드로어 닫고 맨 위로
+      if (isMobile()) closeDrawer();
+      window.scrollTo({ top: 0, behavior: 'instant' });
+    }
+
+    window.addEventListener('hashchange', render);
+    window.addEventListener('DOMContentLoaded', render);
+  </script>
 </body>
 </html>

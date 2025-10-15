@@ -1,0 +1,292 @@
+<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" isELIgnored="true" %>
+
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>iGamil</title>
+  <style>
+    :root { --bg:#0b1020; --card:#121936; --ink:#eef2ff; --muted:#a8b3cf; --accent:#8ab4ff; }
+    *{box-sizing:border-box} body{margin:0;font-family:system-ui,apple-system,Segoe UI,Roboto; background:var(--bg); color:var(--ink)}
+    header{position:sticky;top:0;background:#0f1730;border-bottom:1px solid #1f2a4a}
+    .wrap{max-width:980px;margin:0 auto;padding:16px}
+    nav a{color:var(--muted);text-decoration:none;margin-right:12px;padding:8px 10px;border-radius:10px}
+    nav a.active, nav a:hover{background:#1a2446;color:var(--ink)}
+    main{padding:24px 0}
+    .card{background:var(--card);border:1px solid #1f2a4a;border-radius:16px;padding:18px}
+    h1,h2{margin:0 0 12px}
+    .grid{display:grid;gap:16px}
+    @media(min-width:800px){ .grid-2{grid-template-columns: 1.2fr 1fr} }
+    input,select,button{font:inherit;border-radius:12px;border:1px solid #2a3868;background:#0f1730;color:var(--ink);padding:10px 12px}
+    input::placeholder{color:#7f8ab0}
+    button{cursor:pointer;background:#1f66ff;border-color:#1f66ff}
+    button.secondary{background:#1a2446;border-color:#2a3868}
+    .row{display:flex;gap:10px;flex-wrap:wrap}
+    .pill{display:inline-block;background:#1a2446;border:1px solid #2a3868;border-radius:999px;padding:6px 10px;color:var(--muted);font-size:12px}
+    table{width:100%;border-collapse:collapse;margin-top:10px}
+    th,td{border-bottom:1px solid #26345d;padding:10px;text-align:left}
+    .muted{color:var(--muted)}
+    .empty{border:1px dashed #2a3868;border-radius:12px;padding:16px;text-align:center;color:var(--muted)}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap row" style="justify-content:space-between;align-items:center">
+      <div style="font-weight:700">학급 포털</div>
+      <nav>
+        <a href="#/" data-route="/">로비</a>
+        <a href="#/staffroom" data-route="/staffroom">선생님 교무실 찾기</a>
+        <a href="#/timer" data-route="/timer">타이머</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <div id="app"></div>
+  </main>
+
+  <script>
+    // ----- 샘플 데이터(실제에선 JSON/DB로 대체) -----
+    const TEACHERS = [
+      { name: "김한국", subject: "국어",   building: "본관",  room: "203" },
+      { name: "이수학", subject: "수학",   building: "본관",  room: "305" },
+      { name: "박영어", subject: "영어",   building: "신관",  room: "212" },
+      { name: "최지학", subject: "지구과학", building: "과학관", room: "B102" },
+      { name: "정화학", subject: "화학",   building: "과학관", room: "302" },
+      { name: "오생명", subject: "생명과학", building: "과학관", room: "310" },
+      { name: "문정보", subject: "정보",   building: "신관",  room: "401" },
+    ];
+
+    // ----- 간단 라우터 -----
+    const routes = {
+      "/": renderLobby,
+      "/staffroom": renderStaffroom,
+      "/timer": renderTimer
+    };
+
+    function router() {
+      const path = location.hash.replace("#", "") || "/";
+      const view = routes[path] || renderNotFound;
+      // nav 활성화 표시
+      document.querySelectorAll('nav a').forEach(a=>{
+        a.classList.toggle('active', a.getAttribute('href') === `#${path}`);
+      });
+      view();
+    }
+
+    // ----- View: 로비 -----
+    function renderLobby() {
+      app.innerHTML = `
+        <section class="grid grid-2">
+          <div class="card">
+            <h1>로비</h1>
+            <p class="muted">원하는 기능으로 이동하세요.</p>
+            <div class="row" style="margin-top:12px">
+              <a class="pill" href="#/staffroom">선생님 교무실 찾기</a>
+              <a class="pill" href="#/timer">집중 타이머</a>
+            </div>
+          </div>
+          <div class="card">
+            <h2>빠른 실행</h2>
+            <div class="row">
+              <button onclick="location.hash='#/staffroom'">교무실 찾기 열기</button>
+              <button class="secondary" onclick="location.hash='#/timer'">타이머 열기</button>
+            </div>
+          </div>
+        </section>
+      `;
+    }
+
+    // ----- View: 선생님 교무실 찾기 -----
+    function renderStaffroom() {
+      app.innerHTML = `
+        <section class="grid grid-2">
+          <div class="card">
+            <h1>선생님 교무실 찾기</h1>
+            <p class="muted">이름/과목/건물/호실로 검색할 수 있어요.</p>
+            <div class="row" style="margin:10px 0">
+              <input id="q" placeholder="예) 김한국 / 수학 / 과학관 / 203" style="flex:1" />
+              <button id="btnSearch">검색</button>
+              <button id="btnClear" class="secondary">초기화</button>
+            </div>
+            <div class="row">
+              <select id="filterSubject">
+                <option value="">과목 전체</option>
+                ${Array.from(new Set(TEACHERS.map(t=>t.subject))).map(s=>`<option>${s}</option>`).join("")}
+              </select>
+              <select id="filterBuilding">
+                <option value="">건물 전체</option>
+                ${Array.from(new Set(TEACHERS.map(t=>t.building))).map(b=>`<option>${b}</option>`).join("")}
+              </select>
+            </div>
+            <div id="results"></div>
+          </div>
+
+          <div class="card">
+            <h2>Tip</h2>
+            <ul>
+              <li>이름 일부만 입력해도 검색돼요. (예: <span class="pill">한국</span>)</li>
+              <li>과목/건물 드롭다운으로 1차 필터링 후, 검색어를 더해 좁힐 수 있어요.</li>
+              <li>데이터는 샘플입니다. 실제 데이터로 교체 가능(JSON 불러오기).</li>
+            </ul>
+          </div>
+        </section>
+      `;
+
+      const $q = document.getElementById("q");
+      const $results = document.getElementById("results");
+      const $filterSubject = document.getElementById("filterSubject");
+      const $filterBuilding = document.getElementById("filterBuilding");
+
+      function applyFilter() {
+        const q = $q.value.trim().toLowerCase();
+        const subj = $filterSubject.value;
+        const bldg = $filterBuilding.value;
+
+        let list = TEACHERS.filter(t =>
+          (!subj || t.subject === subj) &&
+          (!bldg || t.building === bldg)
+        );
+
+        if (q) {
+          list = list.filter(t => [t.name, t.subject, t.building, t.room]
+            .some(v => String(v).toLowerCase().includes(q)));
+        }
+
+        renderTable(list);
+      }
+
+      function renderTable(list) {
+        if (!list.length) {
+          $results.innerHTML = `<div class="empty">검색 결과가 없습니다.</div>`;
+          return;
+        }
+        $results.innerHTML = `
+          <table>
+            <thead>
+              <tr><th>이름</th><th>과목</th><th>건물</th><th>호실</th></tr>
+            </thead>
+            <tbody>
+              ${list.map(t=>`
+                <tr>
+                  <td>${t.name}</td>
+                  <td>${t.subject}</td>
+                  <td>${t.building}</td>
+                  <td>${t.room}</td>
+                </tr>
+              `).join("")}
+            </tbody>
+          </table>
+        `;
+      }
+
+      // 이벤트 바인딩
+      document.getElementById("btnSearch").addEventListener("click", applyFilter);
+      document.getElementById("btnClear").addEventListener("click", ()=>{
+        $q.value = ""; $filterSubject.value=""; $filterBuilding.value=""; applyFilter();
+      });
+      $q.addEventListener("keydown", e => { if (e.key === "Enter") applyFilter(); });
+      $filterSubject.addEventListener("change", applyFilter);
+      $filterBuilding.addEventListener("change", applyFilter);
+
+      // 첫 렌더
+      renderTable(TEACHERS);
+      // 포커스 UX
+      $q.focus();
+    }
+
+    // ----- View: 타이머(간단 포모도로 데모) -----
+    let timerId = null, remain = 0;
+    function renderTimer() {
+      app.innerHTML = `
+        <section class="grid grid-2">
+          <div class="card">
+            <h1>집중 타이머</h1>
+            <div class="row" style="margin:10px 0">
+              <label>집중(분) <input id="focusMin" type="number" min="1" value="25" style="width:90px"/></label>
+              <label>휴식(분) <input id="breakMin" type="number" min="1" value="5" style="width:90px"/></label>
+            </div>
+            <div class="row" style="margin:10px 0">
+              <button id="startBtn">시작</button>
+              <button id="stopBtn" class="secondary">정지</button>
+            </div>
+            <div class="card" style="margin-top:12px">
+              <h2 id="phase">대기</h2>
+              <div id="clock" style="font-size:40px; font-weight:800;">00:00</div>
+            </div>
+          </div>
+          <div class="card">
+            <h2>Tip</h2>
+            <ul>
+              <li>포모도로 기본값: 25분 집중, 5분 휴식</li>
+              <li>브라우저 탭이 뒤로 가도 작동합니다.</li>
+            </ul>
+          </div>
+        </section>
+      `;
+
+      const $phase = document.getElementById("phase");
+      const $clock = document.getElementById("clock");
+      const $focus = document.getElementById("focusMin");
+      const $break = document.getElementById("breakMin");
+      const $start = document.getElementById("startBtn");
+      const $stop = document.getElementById("stopBtn");
+
+      function format(sec){
+        const m = String(Math.floor(sec/60)).padStart(2,"0");
+        const s = String(sec%60).padStart(2,"0");
+        return `${m}:${s}`;
+      }
+
+      function tick() {
+        if (remain <= 0) return;
+        remain--;
+        $clock.textContent = format(remain);
+        if (remain === 0) {
+          // 다음 단계 전환
+          if ($phase.textContent === "집중") {
+            startBreak();
+          } else {
+            startFocus();
+          }
+        }
+      }
+
+      function startFocus(){
+        clearInterval(timerId);
+        $phase.textContent = "집중";
+        remain = parseInt($focus.value,10) * 60;
+        $clock.textContent = format(remain);
+        timerId = setInterval(tick, 1000);
+      }
+      function startBreak(){
+        clearInterval(timerId);
+        $phase.textContent = "휴식";
+        remain = parseInt($break.value,10) * 60;
+        $clock.textContent = format(remain);
+        timerId = setInterval(tick, 1000);
+      }
+
+      $start.addEventListener("click", startFocus);
+      $stop.addEventListener("click", ()=>{ clearInterval(timerId); $phase.textContent="대기"; $clock.textContent="00:00"; });
+
+    }
+
+    // ----- View: 404 -----
+    function renderNotFound() {
+      app.innerHTML = `
+        <div class="card">
+          <h1>페이지를 찾을 수 없습니다.</h1>
+          <p class="muted"><a href="#/">로비로 이동</a></p>
+        </div>
+      `;
+    }
+
+    // 초기화ㅇ
+    const app = document.getElementById("app");
+    window.addEventListener("hashchange", router);
+    window.addEventListener("DOMContentLoaded", router);
+  </script>
+</body>
+</html>
