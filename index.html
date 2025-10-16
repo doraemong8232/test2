@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>헬로월드 사이트</title>
   <link rel="shortcut icon" href="gamilgo1.png" type="image/png" />
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <style>
     :root{
       --ink:#111827; --bg:#ffffff; --brand:#1d4ed8; --muted:#6b7280; --bar:#0ea5e9; --header-h:56px;
@@ -290,317 +291,306 @@
       };
     })();
 
-// 교무실 검색: [위] 가로 필터 → [아래] 이름 검색 → 결과 표/부서이미지 전환
-const SearchTeacher = (function(){
-  const IMG_BASE = ''; // 예: 'img/dept/' 로 바꾸면 'img/dept/교무기획부.png' 형태로 로드됨
+  // 교무실 검색: [위] 가로 필터(과목→학년→세부과목→선생님) → [아래] 이름 검색 → 결과 표/부서이미지 전환
+  // 교무실 검색: 과목→학년→세부과목→선생님 필터 + 이름 검색 + 표/부서 이미지 전환
+      // 엑셀을 같은 서버 경로에서 자동 로드 (업로드 X)
+      const SearchTeacher = (function(){
+        const IMG_BASE = '';                 // 예: 'img/dept/' -> 'img/dept/교무기획부.png'
+        const EXCEL_PATH = '과목 및 담당교사.xlsx'; // HTML과 같은 폴더라면 이대로. 폴더가 있다면 'data/...' 로 변경
 
-  const SUBJECT_MAIN = ['국어','영어','수학','사회','과학','예체능','정보·기타','제2외국어'];
-  const SUB_BY_GRADE = {
-    1: ['국어','영어','수학','통합과학','통합사회','한국사','미술','음악','체육','정보'],
-    2: [
-      '문학','독서','수학I','수학II','기하','영어I','영어II','영어권 문화','운동과 건강',
-      '물리I','화학I','생명과학I','지구과학I','정치와 법','생활과 윤리','경제','세계사','한국지리',
-      '미술 감상과 비평','음악 감상과 비평','인공지능 기초','일본어I','중국어I'
-    ],
-    3: [
-      '스포츠 생활',
-      '화법과 작문','언어와 매체','미적분','확률과 통계','영어 독해와 작문','영어 회화',
-      '심화국어','심화영어','수학과제와 탐구',
-      '물리II','화학II','생명과학II','지구과학II','생활과 과학','윤리와 사상','사회 문화',
-      '동아시아사','세계지리','여행지리','사회문제와 탐구',
-      '프로그래밍','일본문화','중국문화','보건','심리학','논술','세계시민'
-    ]
-  };
-  const DETAIL_TO_MAIN = new Map([
-    ['문학','국어'],['독서','국어'],['화법과 작문','국어'],['언어와 매체','국어'],['심화국어','국어'],['논술','국어'],
-    ['영어I','영어'],['영어II','영어'],['영어권 문화','영어'],['영어 독해와 작문','영어'],['영어 회화','영어'],['심화영어','영어'],
-    ['수학I','수학'],['수학II','수학'],['기하','수학'],['미적분','수학'],['확률과 통계','수학'],['수학과제와 탐구','수학'],
-    ['통합과학','과학'],['물리I','과학'],['화학I','과학'],['생명과학I','과학'],['지구과학I','과학'],
-    ['물리II','과학'],['화학II','과학'],['생명과학II','과학'],['지구과학II','과학'],['생활과 과학','과학'],
-    ['통합사회','사회'],['한국사','사회'],['정치와 법','사회'],['생활과 윤리','사회'],['경제','사회'],
-    ['세계사','사회'],['한국지리','사회'],['사회 문화','사회'],['동아시아사','사회'],['세계지리','사회'],
-    ['여행지리','사회'],['사회문제와 탐구','사회'],['세계시민','사회'],
-    ['미술','예체능'],['음악','예체능'],['체육','예체능'],['운동과 건강','예체능'],['스포츠 생활','예체능'],
-    ['미술 감상과 비평','예체능'],['음악 감상과 비평','예체능'],['보건','예체능'],
-    ['정보','정보·기타'],['프로그래밍','정보·기타'],['인공지능 기초','정보·기타'],
-    ['일본어I','제2외국어'],['중국어I','제2외국어'],['일본문화','제2외국어'],['중국문화','제2외국어'],
-  ]);
+        // ===== 대분류/학년별 세부과목/정확 매핑 =====
+        const SUBJECT_MAIN = ['국어','영어','수학','사회','과학','예체능','정보·기타','제2외국어'];
 
-  // === 실제 데이터에서는 dept를 아래 12개 중 하나로 채워줘 ===
-  // 교무기획부, 교육연구부, 교육과정부, 인문사회부, 수리과학부, 교육정보부, 생활인권부,
-  // 체육예술안전부, 진로진학부, 1학년부, 2학년부, 3학년부
-  const teachers = [
-    { name:'김지훈', main:'수학', detail:'수학I', grades:[2], room:'본관 2층 205', dept:'수리과학부' },
-    { name:'이승진', main:'수학', detail:'기하', grades:[2], room:'본관 3층 305', dept:'수리과학부' },
-    { name:'박소연', main:'영어', detail:'영어I', grades:[2], room:'신관 3층 312', dept:'인문사회부' },
-    { name:'강소원', main:'영어', detail:'영어 독해와 작문', grades:[3], room:'신관 2층 210', dept:'교무기획부' },
-    { name:'김진미', main:'국어', detail:'문학', grades:[2], room:'본관 4층 402', dept:'교육연구부' },
-    { name:'최미희', main:'국어', detail:'언어와 매체', grades:[3], room:'본관 4층 404', dept:'인문사회부' },
-    { name:'조문영', main:'과학', detail:'지구과학I', grades:[2], room:'본관 4층 402', dept:'수리과학부' },
-    { name:'김수경', main:'과학', detail:'생명과학II', grades:[3], room:'과학실 1', dept:'수리과학부' },
-    { name:'이정원', main:'사회', detail:'세계사', grades:[2], room:'본관 2층 207', dept:'인문사회부' },
-    { name:'곽보근', main:'정보·기타', detail:'프로그래밍', grades:[3], room:'컴실 1', dept:'교육정보부' },
-    { name:'김연화', main:'제2외국어', detail:'중국어I', grades:[2], room:'신관 2층 206', dept:'인문사회부' },
-  ].map(t=>{
-    if (!t.main && DETAIL_TO_MAIN.has(t.detail)) t.main = DETAIL_TO_MAIN.get(t.detail);
-    if (t.detail && DETAIL_TO_MAIN.has(t.detail) && t.main!==DETAIL_TO_MAIN.get(t.detail)) {
-      t.main = DETAIL_TO_MAIN.get(t.detail);
-    }
-    return t;
-  });
+        const SUB_BY_GRADE = {
+          1: ['국어','영어','수학','통합과학','통합사회','한국사','미술','음악','체육','정보'],
+          2: [
+            '문학','독서','수학I','수학II','기하','영어I','영어II','영어권 문화','운동과 건강',
+            '물리I','화학I','생명과학I','지구과학I','정치와 법','생활과 윤리','경제','세계사','한국지리',
+            '미술 감상과 비평','음악 감상과 비평','인공지능 기초','일본어I','중국어I'
+          ],
+          3: [
+            '스포츠 생활',
+            '화법과 작문','언어와 매체','미적분','확률과 통계','영어 독해와 작문','영어 회화',
+            '심화국어','심화영어','수학과제와 탐구',
+            '물리II','화학II','생명과학II','지구과학II','생활과 과학','윤리와 사상','사회 문화',
+            '동아시아사','세계지리','여행지리','사회문제와 탐구',
+            '프로그래밍','일본문화','중국문화','보건','심리학','논술','세계시민'
+          ]
+        };
 
-  let elInput=null, elTbody=null;
-  let selMain=null, selGrade=null, selDetail=null, selTeacher=null;
+        const DETAIL_TO_MAIN = new Map([
+          ['문학','국어'],['독서','국어'],['화법과 작문','국어'],['언어와 매체','국어'],['심화국어','국어'],['논술','국어'],['고전 읽기','국어'],['공통국어2','국어'],
+          ['영어I','영어'],['영어II','영어'],['영어권 문화','영어'],['영어 독해와 작문','영어'],['영어 회화','영어'],['심화영어','영어'],['공통영어2','영어'],['영어회화','영어'],['심화 영어Ⅰ','영어'],
+          ['수학I','수학'],['수학II','수학'],['기하','수학'],['미적분','수학'],['확률과 통계','수학'],['수학과제와 탐구','수학'],['공통수학2','수학'],['수학과제 탐구','수학'],
+          ['통합과학','과학'],['통합과학2','과학'],['물리I','과학'],['물리II','과학'],['화학I','과학'],['화학II','과학'],['생명과학I','과학'],['생명과학II','과학'],['지구과학I','과학'],['지구과학II','과학'],['생활과 과학','과학'],['과학탐구실험2','과학'],
+          ['통합사회','사회'],['통합사회2','사회'],['한국사','사회'],['한국사2','사회'],['세계사','사회'],['한국지리','사회'],['세계지리','사회'],
+          ['정치와 법','사회'],['생활과 윤리','사회'],['사회 문화','사회'],['사회·문화','사회'],['경제','사회'],['동아시아사','사회'],['여행지리','사회'],['사회문제 탐구','사회'],['세계시민','사회'],
+          ['미술','예체능'],['음악','예체능'],['체육','예체능'],['체육2','예체능'],['운동과 건강','예체능'],['스포츠 생활','예체능'],
+          ['미술 감상과 비평','예체능'],['음악 감상과 비평','예체능'],['보건','예체능'],['심리학','예체능'],
+          ['정보','정보·기타'],['소프트웨어와 생활','정보·기타'],['프로그래밍','정보·기타'],['인공지능 기초','정보·기타'],
+          ['일본어I','제2외국어'],['중국어I','제2외국어'],['일본 문화','제2외국어'],['중국 문화','제2외국어'],['일본문화','제2외국어'],['중국문화','제2외국어'],
+        ]);
 
-  // 결과 영역 2종(표/이미지)을 교체하기 위한 컨테이너
-  let elResultArea=null;
+        // ===== 데이터 =====
+        // teachers: { name, main, detail, dept }
+        let teachers = [];
 
-  let state = { q:'', main:'', grade:'', detail:'', teacher:'', detailMode:false, selectedDept:'' };
+        // 엘리먼트
+        let elInput=null, elTbody=null, elResultArea=null;
+        let selMain=null, selGrade=null, selDetail=null, selTeacher=null;
 
-  function renderTable(){
-    const table = document.createElement('table');
-    const thead = document.createElement('thead');
-    const trh = document.createElement('tr');
-    ['이름','과목','위치','위치 자세히 보기'].forEach(t=>{
-      const th=document.createElement('th'); th.textContent=t; trh.appendChild(th);
-    });
-    thead.appendChild(trh);
-    elTbody = document.createElement('tbody');
-    table.append(thead, elTbody);
+        // 상태
+        let state = { q:'', main:'', grade:'', detail:'', teacher:'', detailMode:false, selectedDept:'' };
 
-    // 표 내용 채우기
-    renderRows();
+        // ===== 유틸 =====
+        const normalize = s => (s==null ? '' : String(s)).trim();
 
-    // 클릭 핸들러
-    elTbody.addEventListener('click', onTableClick);
+        function guessMain(detail, fallbackMain){
+          if (fallbackMain && fallbackMain.trim()) return fallbackMain.trim();
+          const d = normalize(detail);
+          if (DETAIL_TO_MAIN.has(d)) return DETAIL_TO_MAIN.get(d);
+          if (/^영어|영어\s|영어권/.test(d)) return '영어';
+          if (/^수학|미적분|확률|기하|과제/.test(d)) return '수학';
+          if (/과학|물리|화학|생명|지구/.test(d)) return '과학';
+          if (/한국사|세계사|지리|윤리|정치|경제|사회/.test(d)) return '사회';
+          if (/음악|미술|체육|스포츠|운동|보건|심리/.test(d)) return '예체능';
+          if (/일본|중국/.test(d)) return '제2외국어';
+          if (/정보|소프트웨어|프로그래밍|인공지능/.test(d)) return '정보·기타';
+          if (/국어|문학|독서|화법|언어/.test(d)) return '국어';
+          return '정보·기타';
+        }
 
-    return table;
-  }
+        const isDetailInGrade = (detail, grade) => {
+          if (!grade) return true;
+          const set = new Set(SUB_BY_GRADE[+grade] || []);
+          return set.has(detail);
+        };
 
-  function renderImageView(dept, teacherName){
-    const wrap = document.createElement('div');
-    wrap.style.display='grid';
-    wrap.style.gap='12px';
+        // ===== 엑셀 로드(같은 경로) =====
+        async function loadFromUrl(url){
+          try{
+            const res = await fetch(url, { cache:'no-cache' });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const buf = await res.arrayBuffer();
+            const wb = XLSX.read(buf, { type:'array' });
+            const ws = wb.Sheets[wb.SheetNames[0]];
+            const rows = XLSX.utils.sheet_to_json(ws, { defval:'' }); // [{부서, 성명, 교과, 세부교과1..6}]
 
-    const back = document.createElement('button');
-    back.className='btn';
-    back.textContent='← 목록으로';
-    back.addEventListener('click', ()=>{
-      state.detailMode = false;
-      state.selectedDept = '';
-      swapToTable();
-    });
+            teachers = rows.flatMap(r=>{
+              const dept = normalize(r['부서']);
+              const name = normalize(r['성명']);
+              const main = normalize(r['교과']);
+              if (!name) return [];
+              const out = [];
+              for (let i=1;i<=6;i++){
+                const d = normalize(r[`세부교과${i}`]);
+                if (!d) continue;
+                out.push({ name, dept, detail:d, main: guessMain(d, main) });
+              }
+              if (out.length===0) out.push({ name, dept, detail:'', main: main || '' });
+              return out;
+            });
 
-    const card = document.createElement('div');
-    card.className='card';
-    card.style.textAlign='center';
+            // 드롭다운/표 렌더
+            refreshDependentOptions();
+            renderRows();
+          }catch(err){
+            console.error(err);
+            alert('엑셀 파일을 불러오지 못했습니다. 경로/파일명을 확인하세요.\n' + err.message);
+          }
+        }
 
-    const caption = document.createElement('div');
-    caption.style.margin='4px 0 10px';
-    caption.innerHTML = `<strong>${teacherName}</strong> · <span class="muted">${dept}</span>`;
+        // ===== 표/이미지 뷰 =====
+        function renderTable(){
+          const table = document.createElement('table');
+          const thead = document.createElement('thead');
+          const trh = document.createElement('tr');
+          ['이름','과목','부서',''].forEach(t=>{ const th=document.createElement('th'); th.textContent=t; trh.appendChild(th); });
+          thead.appendChild(trh);
+          elTbody = document.createElement('tbody');
+          table.append(thead, elTbody);
+          renderRows();
+          elTbody.addEventListener('click', onTableClick);
+          return table;
+        }
 
-    const img = document.createElement('img');
-    img.alt = `${dept} 위치 이미지`;
-    img.style.maxWidth='100%';
-    img.style.height='auto';
-    img.style.borderRadius='12px';
-    img.style.border='1px solid #e5e7eb';
+        function renderImageView(dept, teacherName){
+          const wrap = document.createElement('div'); wrap.style.display='grid'; wrap.style.gap='12px';
+          const back = document.createElement('button'); back.className='btn'; back.textContent='← 목록으로';
+          back.addEventListener('click', ()=>{ state.detailMode=false; state.selectedDept=''; swapToTable(); });
+          const card = document.createElement('div'); card.className='card'; card.style.textAlign='center';
 
-    // 파일명에 공백/한글이 있으므로 인코딩
-    const src = IMG_BASE + encodeURIComponent(dept) + '.png';
-    img.src = src;
+          const caption = document.createElement('div');
+          caption.style.margin='4px 0 10px';
+          caption.innerHTML = `<strong>${teacherName}</strong> · <span class="muted">${dept}</span>`;
 
-    card.append(caption, img);
-    wrap.append(back, card);
-    return wrap;
-  }
+          const img = document.createElement('img');
+          img.alt = `${dept} 위치 이미지`;
+          img.style.maxWidth='100%'; img.style.height='auto'; img.style.borderRadius='12px'; img.style.border='1px solid #e5e7eb';
+          img.loading='lazy';
+          img.onerror=()=>{ img.alt=`${dept} 이미지가 없습니다.`; img.style.opacity='.7'; };
+          img.src = IMG_BASE + encodeURIComponent(dept) + '.png';
 
-  function swapToImage(dept, teacherName){
-    elResultArea.textContent = '';
-    elResultArea.appendChild(renderImageView(dept, teacherName));
-  }
-  function swapToTable(){
-    elResultArea.textContent = '';
-    elResultArea.appendChild(renderTable());
-  }
+          card.append(caption, img);
+          wrap.append(back, card);
+          return wrap;
+        }
 
-  function renderRows(){
-    let list = [...teachers];
-    if (state.q.trim()){
-      const kw = state.q.trim();
-      list = list.filter(t => t.name.includes(kw));
-    }
-    if (state.main)   list = list.filter(t => t.main === state.main);
-    if (state.grade)  list = list.filter(t => t.grades.includes(+state.grade));
-    if (state.detail) list = list.filter(t => t.detail === state.detail);
-    if (state.teacher)list = list.filter(t => t.name === state.teacher);
+        function swapToImage(dept, teacherName){
+          elResultArea.textContent = '';
+          elResultArea.appendChild(renderImageView(dept, teacherName));
+        }
+        function swapToTable(){
+          elResultArea.textContent = '';
+          elResultArea.appendChild(renderTable());
+        }
 
-    elTbody.textContent = '';
-    for (const t of list){
-      const tr = document.createElement('tr');
+        // ===== 렌더/필터 =====
+        function renderRows(){
+          if (!elTbody) return;
+          let list = [...teachers];
 
-      const td1 = document.createElement('td'); td1.textContent = t.name;
-      const td2 = document.createElement('td'); td2.textContent = `${t.main}${t.detail ? ' · '+t.detail : ''}`;
-      const td3 = document.createElement('td'); td3.textContent = t.room;
+          if (state.q.trim()){
+            const kw = state.q.trim();
+            list = list.filter(t => t.name.includes(kw));
+          }
+          if (state.main)   list = list.filter(t => t.main === state.main);
+          if (state.grade)  list = list.filter(t => !t.detail || isDetailInGrade(t.detail, state.grade));
+          if (state.detail) list = list.filter(t => t.detail === state.detail);
+          if (state.teacher)list = list.filter(t => t.name === state.teacher);
 
-      const td4 = document.createElement('td');
-      const btn = document.createElement('button');
-      btn.className = 'btn';
-      btn.textContent = '위치 자세히 보기';
-      btn.dataset.action = 'detail';
-      btn.dataset.name = t.name;
-      btn.dataset.dept = t.dept || '';
-      td4.appendChild(btn);
+          elTbody.textContent = '';
+          for (const t of list){
+            const tr = document.createElement('tr');
+            const td1 = document.createElement('td'); td1.textContent = t.name;
+            const td2 = document.createElement('td'); td2.textContent = `${t.main || ''}${t.detail ? ' · '+t.detail : ''}`;
+            const td3 = document.createElement('td'); td3.textContent = t.dept || '';
+            const td4 = document.createElement('td');
+            const btn = document.createElement('button'); btn.className='btn'; btn.textContent='위치 자세히 보기';
+            btn.dataset.action='detail'; btn.dataset.name=t.name; btn.dataset.dept=t.dept || '';
+            td4.appendChild(btn);
+            tr.append(td1, td2, td3, td4);
+            elTbody.appendChild(tr);
+          }
+        }
 
-      tr.append(td1, td2, td3, td4);
-      elTbody.appendChild(tr);
-    }
-  }
+        function refreshDependentOptions(){
+          // 세부과목 후보: 학년/대분류 반영
+          let detailPool = new Set();
+          if (state.grade){
+            (SUB_BY_GRADE[+state.grade] || []).forEach(s=>detailPool.add(s));
+          } else {
+            Object.values(SUB_BY_GRADE).flat().forEach(s=>detailPool.add(s));
+          }
+          if (state.main){
+            detailPool = new Set([...detailPool].filter(d => (DETAIL_TO_MAIN.get(d) || guessMain(d,'')) === state.main));
+          }
+          fillSelect(selDetail, ['(세부 과목 전체)', ...[...detailPool].sort()], state.detail);
 
-  function refreshDependentOptions(){
-    const g = state.grade ? +state.grade : null;
-    let detailPool = new Set();
-    if (g){ SUB_BY_GRADE[g].forEach(s=>detailPool.add(s)); }
-    else { Object.values(SUB_BY_GRADE).flat().forEach(s=>detailPool.add(s)); }
+          // 선생님 후보
+          let pool = teachers.filter(t=>{
+            if (state.main && t.main!==state.main) return false;
+            if (state.grade && t.detail && !new Set(SUB_BY_GRADE[+state.grade]||[]).has(t.detail)) return false;
+            if (state.detail && t.detail!==state.detail) return false;
+            return true;
+          }).map(t=>t.name);
+          pool = Array.from(new Set(pool)).sort();
+          fillSelect(selTeacher, ['(선생님 전체)', ...pool], state.teacher);
+        }
 
-    if (state.main){
-      detailPool = new Set([...detailPool].filter(d => (DETAIL_TO_MAIN.get(d) || guessMain(d)) === state.main));
-    }
-    fillSelect(selDetail, ['(세부 과목 전체)', ...[...detailPool].sort()], state.detail);
+        // ===== 이벤트 =====
+        function onInput(e){ state.q = e.target.value; if(!state.detailMode) renderRows(); }
+        function onMain(e){ state.main = e.target.value||''; state.detail=''; state.teacher=''; refreshDependentOptions(); if(!state.detailMode) renderRows(); }
+        function onGrade(e){ state.grade = e.target.value||''; state.detail=''; state.teacher=''; refreshDependentOptions(); if(!state.detailMode) renderRows(); }
+        function onDetail(e){ state.detail = e.target.value||''; state.teacher=''; refreshDependentOptions(); if(!state.detailMode) renderRows(); }
+        function onTeacher(e){ state.teacher = e.target.value||''; if(!state.detailMode) renderRows(); }
 
-    let pool = teachers.filter(t=>{
-      if (state.main && t.main!==state.main) return false;
-      if (state.grade && !t.grades.includes(+state.grade)) return false;
-      if (state.detail && t.detail!==state.detail) return false;
-      return true;
-    }).map(t=>t.name);
-    pool = Array.from(new Set(pool)).sort();
-    fillSelect(selTeacher, ['(선생님 전체)', ...pool], state.teacher);
-  }
+        function onTableClick(e){
+          const btn = e.target.closest('button[data-action="detail"]'); if (!btn) return;
+          const dept = btn.dataset.dept, name = btn.dataset.name;
+          if (!dept){ alert('부서 정보가 없는 선생님입니다.'); return; }
+          state.detailMode = true; state.selectedDept = dept; swapToImage(dept, name);
+        }
 
-  function onInput(e){ state.q = e.target.value; if(!state.detailMode) renderRows(); }
-  function onMain(e){ state.main = e.target.value || ''; state.detail=''; state.teacher=''; refreshDependentOptions(); if(!state.detailMode) renderRows(); }
-  function onGrade(e){ state.grade = e.target.value || ''; state.detail=''; state.teacher=''; refreshDependentOptions(); if(!state.detailMode) renderRows(); }
-  function onDetail(e){ state.detail = e.target.value || ''; state.teacher=''; refreshDependentOptions(); if(!state.detailMode) renderRows(); }
-  function onTeacher(e){ state.teacher = e.target.value || ''; if(!state.detailMode) renderRows(); }
+        function fillSelect(sel, options, current){
+          sel.textContent = '';
+          options.forEach(label=>{
+            const opt=document.createElement('option');
+            if (typeof label==='string' && label.startsWith('(') && label.endsWith(')')){ opt.value=''; opt.textContent=label; }
+            else { opt.value=label; opt.textContent=label; }
+            if (current && current===opt.value) opt.selected=true;
+            sel.appendChild(opt);
+          });
+        }
 
-  function onTableClick(e){
-    const btn = e.target.closest('button[data-action="detail"]');
-    if (!btn) return;
-    const dept = btn.dataset.dept;
-    const name = btn.dataset.name;
-    if (!dept){
-      alert('부서 정보가 없는 선생님입니다.');
-      return;
-    }
-    state.detailMode = true;
-    state.selectedDept = dept;
-    swapToImage(dept, name);
-  }
+        // ===== 마운트/언마운트 =====
+        return {
+          mount(root){
+            const section = document.createElement('section'); section.className='page';
+            const h1 = document.createElement('h1'); h1.textContent='선생님 교무실 검색';
+            const card = document.createElement('div'); card.className='card'; card.style.marginTop='8px';
 
-  function fillSelect(sel, options, current){
-    sel.textContent = '';
-    for (const label of options){
-      const opt = document.createElement('option');
-      if (label.startsWith('(') && label.endsWith(')')){ opt.value=''; opt.textContent=label; }
-      else { opt.value = label; opt.textContent = label; }
-      if (current && current===opt.value) opt.selected = true;
-      sel.appendChild(opt);
-    }
-  }
-  function guessMain(detail){
-    if (/^영어/.test(detail) || detail==='영어권 문화') return '영어';
-    if (/^수학|미적분|확률과 통계|기하|수학과제와 탐구/.test(detail)) return '수학';
-    if (/물리|화학|생명과학|지구과학|생활과 과학|통합과학/.test(detail)) return '과학';
-    if (/세계사|한국사|지리|윤리|정치|경제|사회/.test(detail)) return '사회';
-    if (/미술|음악|체육|스포츠|운동|보건/.test(detail)) return '예체능';
-    if (/일본|중국/.test(detail)) return '제2외국어';
-    if (/프로그래밍|인공지능|정보/.test(detail)) return '정보·기타';
-    if (/국어|문학|독서|화법|언어|심화국어|논술/.test(detail)) return '국어';
-    return '정보·기타';
-  }
+            // 가로 스크롤 필터: 과목 → 학년 → 세부과목 → 선생님
+            const filterWrap = document.createElement('div'); filterWrap.className='hscroll';
+            const mkBox = (label)=>{ const box=document.createElement('div'); box.className='filter-card';
+              const lb=document.createElement('div'); lb.className='label'; lb.textContent=label;
+              const sel=document.createElement('select'); sel.className='select';
+              box.append(lb, sel); return {box, sel}; };
 
-  return {
-    mount(root){
-      const section = document.createElement('section');
-      section.className = 'page';
+            const {box:boxMain,  sel:selMainEl}   = mkBox('과목 선택(대분류)');
+            const {box:boxGrade, sel:selGradeEl}  = mkBox('학년 선택');
+            const {box:boxDetail,sel:selDetailEl} = mkBox('세부 과목 선택');
+            const {box:boxTeacher,sel:selTeacherEl}=mkBox('선생님 선택');
 
-      const h1 = document.createElement('h1');
-      h1.textContent = '선생님 교무실 검색';
+            selMain=selMainEl; fillSelect(selMain, ['(과목 전체)', ...SUBJECT_MAIN], state.main);
+            selGrade=selGradeEl; fillSelect(selGrade, ['(전체)','1','2','3'], state.grade);
+            selDetail=selDetailEl; selTeacher=selTeacherEl;
 
-      const card = document.createElement('div');
-      card.className = 'card';
-      card.style.marginTop = '8px';
+            filterWrap.append(boxMain, boxGrade, boxDetail, boxTeacher);
 
-      // [위] 가로 스크롤 필터
-      const filterWrap = document.createElement('div'); filterWrap.className='hscroll';
+            // 이름 검색
+            const nameWrap=document.createElement('div'); nameWrap.style.display='grid'; nameWrap.style.gap='8px'; nameWrap.style.marginTop='10px';
+            const lb=document.createElement('div'); lb.className='label'; lb.textContent='선생님 성함으로 검색';
+            elInput=document.createElement('input'); elInput.type='text'; elInput.placeholder='예: 김수현';
+            nameWrap.append(lb, elInput);
 
-      const mkBox = (labelText)=>{
-        const box = document.createElement('div'); box.className='filter-card';
-        const lb = document.createElement('div'); lb.className='label'; lb.textContent=labelText;
-        const sel = document.createElement('select'); sel.className='select';
-        box.append(lb, sel);
-        return { box, sel };
-      };
+            // 결과 영역
+            elResultArea=document.createElement('div'); elResultArea.style.marginTop='12px';
+            elResultArea.appendChild(renderTable());
 
-      const {box:boxMain, sel:selMainEl} = mkBox('과목 선택(대분류)');
-      selMain = selMainEl; fillSelect(selMain, ['(과목 전체)', ...SUBJECT_MAIN], state.main);
+            // 조립
+            card.append(filterWrap, nameWrap, elResultArea);
+            section.append(h1, card);
+            root.appendChild(section);
 
-      const {box:boxGrade, sel:selGradeEl} = mkBox('학년 선택');
-      selGrade = selGradeEl; fillSelect(selGrade, ['(전체)','1','2','3'], state.grade);
+            // 이벤트 바인딩
+            elInput.addEventListener('input', onInput);
+            selMain.addEventListener('change', onMain);
+            selGrade.addEventListener('change', onGrade);
+            selDetail.addEventListener('change', onDetail);
+            selTeacher.addEventListener('change', onTeacher);
 
-      const {box:boxDetail, sel:selDetailEl} = mkBox('세부 과목 선택');
-      selDetail = selDetailEl;
+            refreshDependentOptions();
 
-      const {box:boxTeacher, sel:selTeacherEl} = mkBox('선생님 선택');
-      selTeacher = selTeacherEl;
+            // ✅ 페이지 로드시 자동으로 엑셀 로드
+            loadFromUrl(EXCEL_PATH);
+          },
+          unmount(){
+            if (elTbody) elTbody.removeEventListener('click', onTableClick);
+            if (elInput) elInput.removeEventListener('input', onInput);
+            if (selMain) selMain.removeEventListener('change', onMain);
+            if (selGrade) selGrade.removeEventListener('change', onGrade);
+            if (selDetail) selDetail.removeEventListener('change', onDetail);
+            if (selTeacher) selTeacher.removeEventListener('change', onTeacher);
+            elInput=elTbody=elResultArea=selMain=selGrade=selDetail=selTeacher=null;
+            state = { q:'', main:'', grade:'', detail:'', teacher:'', detailMode:false, selectedDept:'' };
+            teachers = [];
+          }
+        };
+      })();
 
-      filterWrap.append(boxMain, boxGrade, boxDetail, boxTeacher);
 
-      // [아래] 이름 검색
-      const nameWrap = document.createElement('div');
-      nameWrap.style.display='grid';
-      nameWrap.style.gap='0px';
-      nameWrap.style.marginTop='0px';
-      const lb = document.createElement('div'); lb.className='label';
-      elInput = document.createElement('input');
-      elInput.type='text'; elInput.placeholder='예: 김지훈';
-      nameWrap.append(lb, elInput);
 
-      // 결과 영역(표/이미지 스왑)
-      elResultArea = document.createElement('div');
-      elResultArea.style.marginTop='12px';
-      // 초기에는 표
-      elResultArea.appendChild(renderTable());
-
-      // 조립
-      card.append(filterWrap, nameWrap, elResultArea);
-      section.append(h1, card);
-      root.appendChild(section);
-
-      // 이벤트
-      elInput.addEventListener('input', onInput);
-      selMain.addEventListener('change', onMain);
-      selGrade.addEventListener('change', onGrade);
-      selDetail.addEventListener('change', onDetail);
-      selTeacher.addEventListener('change', onTeacher);
-
-      refreshDependentOptions();
-    },
-    unmount(){
-      // 이벤트 해제(표가 이미지로 바뀌었을 수 있으므로 안전 체크)
-      if (elTbody) elTbody.removeEventListener('click', onTableClick);
-      if (elInput) elInput.removeEventListener('input', onInput);
-      if (selMain) selMain.removeEventListener('change', onMain);
-      if (selGrade) selGrade.removeEventListener('change', onGrade);
-      if (selDetail) selDetail.removeEventListener('change', onDetail);
-      if (selTeacher) selTeacher.removeEventListener('change', onTeacher);
-
-      elInput=elTbody=selMain=selGrade=selDetail=selTeacher=elResultArea=null;
-      state = { q:'', main:'', grade:'', detail:'', teacher:'', detailMode:false, selectedDept:'' };
-    }
-  };
-})();
 
 
 
